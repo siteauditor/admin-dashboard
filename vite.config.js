@@ -5,6 +5,7 @@ export default defineConfig({
   root: 'src',
   envDir: '../',
   envPrefix: 'VITE_',
+  base: '/admin/',
   plugins: [react()],
   server: {
     port: 3001,

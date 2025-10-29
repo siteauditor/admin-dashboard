@@ -10,6 +10,7 @@ import Users from './pages/Users';
 import Bets from './pages/Bets';
 import WaveChallengeFlip from './pages/admin/WaveChallengeFlip';
 import WavePrizePool from './pages/admin/WavePrizePool';
+import WaveVault from './pages/admin/WaveVault';
 import Login from './pages/Login';
 import { createWeb3Modal, defaultWagmiConfig } from '@web3modal/wagmi/react';
 import { config } from "./config.jsx";
@@ -71,6 +72,7 @@ function AppContent() {
                         <Route path="/admin/wave-challenge-flip" element={<WaveChallengeFlip />} />
                         
                         <Route path="/admin/wave-prize-pool" element={<WavePrizePool />} />
+                        <Route path="/admin/wave-vault" element={<WaveVault />} />
                     </Routes>
                   </div>
                 </RainbowKitProvider>
@@ -86,7 +88,7 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <Router>
+      <Router basename='/admin'>
         <AppContent />
       </Router>
     </AuthProvider>

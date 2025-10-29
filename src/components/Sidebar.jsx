@@ -21,6 +21,7 @@ const navigation = [
     children: [
       { name: 'Wave Challenge Flip', href: '/admin/wave-challenge-flip' },
       { name: 'Wave Prize Pool', href: '/admin/wave-prize-pool' },
+      { name: 'Wave Vault', href: '/admin/wave-vault' },
     ]
   },
 ];
@@ -30,7 +31,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [expandedItems, setExpandedItems] = useState({});
-    'Smart Contracts': true // Auto-expand Smart Contracts by default
+    // 'Smart Contracts': true // Auto-expand Smart Contracts by default
 
   const handleLogout = () => {
     logout();
