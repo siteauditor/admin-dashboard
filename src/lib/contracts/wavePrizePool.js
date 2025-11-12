@@ -22,8 +22,22 @@ const additionalFunctions = [
     name: 'getAllPoolIds',
     type: 'function',
     stateMutability: 'view',
+    inputs: [
+      { name: 'offset', type: 'uint256' },
+      { name: 'limit', type: 'uint256' }
+    ],
+    outputs: [
+      { name: 'totalCount', type: 'uint256' },
+      { name: 'ids', type: 'bytes32[]' },
+      { name: 'hasMore', type: 'bool' }
+    ],
+  },
+  {
+    name: 'getPoolCount',
+    type: 'function',
+    stateMutability: 'view',
     inputs: [],
-    outputs: [{ name: '', type: 'bytes32[]' }],
+    outputs: [{ name: 'count', type: 'uint256' }],
   },
   {
     name: 'getPoolState',

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { readContract } from '@wagmi/core';
-import { parseEther } from 'viem';
+import { parseEther, formatEther } from 'viem';
 import { toast } from 'react-hot-toast';
 import Header from '../../components/Header';
 import ContractStatusCard from '../../components/admin/ContractStatusCard';
@@ -28,6 +28,9 @@ export default function WavePrizePool() {
   const [loading, setLoading] = useState({});
   const [activeTab, setActiveTab] = useState('overview');
   const [pools, setPools] = useState([]);
+  const [pagination, setPagination] = useState({
+    pools: { offset: 0, limit: 20, hasMore: true, totalCount: 0 }
+  });
   const [depositAmount, setDepositAmount] = useState('');
   const [prizeAmount, setPrizeAmount] = useState('');
   const [poolForm, setPoolForm] = useState({
@@ -60,9 +63,9 @@ export default function WavePrizePool() {
     functionName: 'paused',
   });
 
-  const { data: poolIds } = useReadContract({
+  const { data: poolCount } = useReadContract({
     ...wavePrizePoolConfig,
-    functionName: 'getAllPoolIds',
+    functionName: 'getPoolCount',
   });
 
   const { data: poolStats } = useReadContract({
@@ -101,13 +104,26 @@ export default function WavePrizePool() {
     // console.log('WavePrizePool component mounted with base token:', poolForm.baseToken);
   }, []);
 
-  // Fetch pools data
-  useEffect(() => {
-    const fetchPools = async () => {
-      if (!poolIds || poolIds.length === 0) return;
+  // Fetch pools data with pagination
+  const fetchPools = async (offset = 0, limit = 20, append = false) => {
+    if (append) {
+      setLoading(prev => ({ ...prev, loadMorePools: true }));
+    }
+    try {
+      const poolIdsResult = await readContract(config, {
+        ...wavePrizePoolConfig,
+        functionName: 'getAllPoolIds',
+        args: [offset, limit],
+        chainId: chainId
+      });
+      
+      if (!poolIdsResult || poolIdsResult[1]?.length === 0) {
+        if (!append) setPools([]);
+        return;
+      }
       
       const poolsData = [];
-      for (const poolId of poolIds) {
+      for (const poolId of poolIdsResult[1]) {
         try {
           const poolState = await readContract(config, {
             ...wavePrizePoolConfig,
@@ -127,11 +143,34 @@ export default function WavePrizePool() {
           console.error('Error fetching pool state:', error);
         }
       }
-      setPools(poolsData);
-    };
+      
+      if (append) {
+        setPools(prev => [...prev, ...poolsData]);
+      } else {
+        setPools(poolsData);
+      }
+      
+      setPagination(prev => ({
+        ...prev,
+        pools: {
+          offset: offset + limit,
+          limit,
+          hasMore: poolIdsResult[2],
+          totalCount: poolIdsResult[0]
+        }
+      }));
+    } catch (error) {
+      console.error('Error fetching pools:', error);
+    } finally {
+      if (append) {
+        setLoading(prev => ({ ...prev, loadMorePools: false }));
+      }
+    }
+  };
 
+  useEffect(() => {
     fetchPools();
-  }, [poolIds]);
+  }, []);
 
   useEffect(() => {
     if (isSuccess) {
@@ -562,10 +601,26 @@ export default function WavePrizePool() {
           {activeTab === 'pools' && (
             <div className="space-y-6">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Prize Pools ({pools.length})
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Prize Pools ({pagination.pools.totalCount || pools.length})
+                  </h3>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    Showing {pools.length} of {pagination.pools.totalCount || pools.length}
+                  </div>
+                </div>
                 <Table columns={poolColumns} data={pools} actions={poolActions} />
+                {pagination.pools.hasMore && (
+                  <div className="mt-4 text-center">
+                    <button
+                      onClick={() => fetchPools(pagination.pools.offset, pagination.pools.limit, true)}
+                      disabled={loading.loadMorePools}
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading.loadMorePools ? 'Loading...' : 'Load More Pools'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

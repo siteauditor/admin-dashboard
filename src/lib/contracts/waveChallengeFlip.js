@@ -40,20 +40,79 @@ const additionalFunctions = [
     name: 'getGameIds',
     type: 'function',
     stateMutability: 'view',
-    inputs: [],
+    inputs: [
+      { name: 'offset', type: 'uint256' },
+      { name: 'limit', type: 'uint256' }
+    ],
     outputs: [
-      { name: 'len', type: 'uint256' },
-      { name: 'ids', type: 'bytes32[]' }
+      { name: 'totalCount', type: 'uint256' },
+      { name: 'ids', type: 'bytes32[]' },
+      { name: 'hasMore', type: 'bool' }
     ],
   },
   {
     name: 'getChallengeIds',
     type: 'function',
     stateMutability: 'view',
+    inputs: [
+      { name: 'offset', type: 'uint256' },
+      { name: 'limit', type: 'uint256' }
+    ],
+    outputs: [
+      { name: 'totalCount', type: 'uint256' },
+      { name: 'ids', type: 'bytes32[]' },
+      { name: 'hasMore', type: 'bool' }
+    ],
+  },
+  {
+    name: 'getAllUserAddress',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'offset', type: 'uint256' },
+      { name: 'limit', type: 'uint256' }
+    ],
+    outputs: [
+      { name: 'totalCount', type: 'uint256' },
+      { name: 'addrs', type: 'address[]' },
+      { name: 'hasMore', type: 'bool' }
+    ],
+  },
+  {
+    name: 'getUserHistory',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'userAddress', type: 'address' },
+      { name: 'offset', type: 'uint256' },
+      { name: 'limit', type: 'uint256' }
+    ],
+    outputs: [
+      { name: 'totalCount', type: 'uint256' },
+      { name: 'challengeIds', type: 'bytes32[]' },
+      { name: 'hasMore', type: 'bool' }
+    ],
+  },
+  {
+    name: 'getArrayLengths',
+    type: 'function',
+    stateMutability: 'view',
     inputs: [],
     outputs: [
-      { name: 'len', type: 'uint256' },
-      { name: 'ids', type: 'bytes32[]' }
+      { name: 'gameCount', type: 'uint256' },
+      { name: 'challengeCount', type: 'uint256' },
+      { name: 'userCount', type: 'uint256' }
+    ],
+  },
+  {
+    name: 'getUserHistoryLength',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'userAddress', type: 'address' }
+    ],
+    outputs: [
+      { name: 'count', type: 'uint256' }
     ],
   },
   {

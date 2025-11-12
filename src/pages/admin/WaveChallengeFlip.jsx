@@ -29,6 +29,10 @@ export default function WaveChallengeFlip() {
   const [activeTab, setActiveTab] = useState('overview');
   const [gamePools, setGamePools] = useState([]);
   const [challenges, setChallenges] = useState([]);
+  const [pagination, setPagination] = useState({
+    games: { offset: 0, limit: 20, hasMore: true, totalCount: 0 },
+    challenges: { offset: 0, limit: 20, hasMore: true, totalCount: 0 }
+  });
   const [gameForm, setGameForm] = useState({
     baseToken: '',
     burnFee: '',
@@ -61,14 +65,9 @@ export default function WaveChallengeFlip() {
     functionName: 'paused',
   });
 
-  const { data: gameIds } = useReadContract({
+  const { data: arrayLengths } = useReadContract({
     ...waveChallengeFlipConfig,
-    functionName: 'getGameIds',
-  });
-
-  const { data: challengeIds } = useReadContract({
-    ...waveChallengeFlipConfig,
-    functionName: 'getChallengeIds',
+    functionName: 'getArrayLengths',
   });
 
   const { data: treasury } = useReadContract({
@@ -93,22 +92,33 @@ export default function WaveChallengeFlip() {
     // console.log('WaveChallengeFlip component mounted with base token:', gameForm.baseToken);
   }, []);
 
-  // Fetch game pools data
-  useEffect(() => {
-    const fetchGamePools = async () => {
-      if (!gameIds || gameIds[1]?.length === 0) return;
+  // Fetch game pools data with pagination
+  const fetchGamePools = async (offset = 0, limit = 20, append = false) => {
+    if (append) {
+      setLoading(prev => ({ ...prev, loadMoreGames: true }));
+    }
+    try {
+      const gameIdsResult = await readContract(config, {
+        ...waveChallengeFlipConfig,
+        functionName: 'getGameIds',
+        args: [offset, limit],
+        chainId: chainId
+      });
+      
+      if (!gameIdsResult || gameIdsResult[1]?.length === 0) {
+        if (!append) setGamePools([]);
+        return;
+      }
       
       const poolsData = [];
-      for (const gameId of gameIds[1]) {
+      for (const gameId of gameIdsResult[1]) {
         try {
-          const gameInfo = await readContract( config,
-            {
-              ...waveChallengeFlipConfig,
-              functionName: 'getGameInfo',
-              args: [gameId],
-              chainId: chainId
-            }
-        );
+          const gameInfo = await readContract(config, {
+            ...waveChallengeFlipConfig,
+            functionName: 'getGameInfo',
+            args: [gameId],
+            chainId: chainId
+          });
           
           poolsData.push({
             gameId,
@@ -124,19 +134,55 @@ export default function WaveChallengeFlip() {
           console.error('Error fetching game info:', error);
         }
       }
-      setGamePools(poolsData);
-    };
+      
+      if (append) {
+        setGamePools(prev => [...prev, ...poolsData]);
+      } else {
+        setGamePools(poolsData);
+      }
+      
+      setPagination(prev => ({
+        ...prev,
+        games: {
+          offset: offset + limit,
+          limit,
+          hasMore: gameIdsResult[2],
+          totalCount: gameIdsResult[0]
+        }
+      }));
+    } catch (error) {
+      console.error('Error fetching game pools:', error);
+    } finally {
+      if (append) {
+        setLoading(prev => ({ ...prev, loadMoreGames: false }));
+      }
+    }
+  };
 
-    fetchGamePools();
-  }, [gameIds]);
-
-  // Fetch challenges data
   useEffect(() => {
-    const fetchChallenges = async () => {
-      if (!challengeIds || challengeIds[1]?.length === 0) return;
+    fetchGamePools();
+  }, []);
+
+  // Fetch challenges data with pagination
+  const fetchChallenges = async (offset = 0, limit = 20, append = false) => {
+    if (append) {
+      setLoading(prev => ({ ...prev, loadMoreChallenges: true }));
+    }
+    try {
+      const challengeIdsResult = await readContract(config, {
+        ...waveChallengeFlipConfig,
+        functionName: 'getChallengeIds',
+        args: [offset, limit],
+        chainId: chainId
+      });
+      
+      if (!challengeIdsResult || challengeIdsResult[1]?.length === 0) {
+        if (!append) setChallenges([]);
+        return;
+      }
       
       const challengesData = [];
-      for (const challengeId of challengeIds[1]) {
+      for (const challengeId of challengeIdsResult[1]) {
         try {
           const challengeInfo = await readContract(config, {
             ...waveChallengeFlipConfig,
@@ -160,11 +206,34 @@ export default function WaveChallengeFlip() {
           console.error('Error fetching challenge info:', error);
         }
       }
-      setChallenges(challengesData);
-    };
+      
+      if (append) {
+        setChallenges(prev => [...prev, ...challengesData]);
+      } else {
+        setChallenges(challengesData);
+      }
+      
+      setPagination(prev => ({
+        ...prev,
+        challenges: {
+          offset: offset + limit,
+          limit,
+          hasMore: challengeIdsResult[2],
+          totalCount: challengeIdsResult[0]
+        }
+      }));
+    } catch (error) {
+      console.error('Error fetching challenges:', error);
+    } finally {
+      if (append) {
+        setLoading(prev => ({ ...prev, loadMoreChallenges: false }));
+      }
+    }
+  };
 
+  useEffect(() => {
     fetchChallenges();
-  }, [challengeIds]);
+  }, []);
 
   useEffect(() => {
     if (isSuccess) {
@@ -591,10 +660,26 @@ export default function WaveChallengeFlip() {
           {activeTab === 'games' && (
             <div className="space-y-6">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Game Pools ({gamePools.length})
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Game Pools ({pagination.games.totalCount || gamePools.length})
+                  </h3>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    Showing {gamePools.length} of {pagination.games.totalCount || gamePools.length}
+                  </div>
+                </div>
                 <Table columns={gamePoolColumns} data={gamePools} actions={gamePoolActions} />
+                {pagination.games.hasMore && (
+                  <div className="mt-4 text-center">
+                    <button
+                      onClick={() => fetchGamePools(pagination.games.offset, pagination.games.limit, true)}
+                      disabled={loading.loadMoreGames}
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading.loadMoreGames ? 'Loading...' : 'Load More Games'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -603,10 +688,26 @@ export default function WaveChallengeFlip() {
           {activeTab === 'challenges' && (
             <div className="space-y-6">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Challenges ({challenges.length})
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Challenges ({pagination.challenges.totalCount || challenges.length})
+                  </h3>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    Showing {challenges.length} of {pagination.challenges.totalCount || challenges.length}
+                  </div>
+                </div>
                 <Table columns={challengeColumns} data={challenges} actions={challengeActions} />
+                {pagination.challenges.hasMore && (
+                  <div className="mt-4 text-center">
+                    <button
+                      onClick={() => fetchChallenges(pagination.challenges.offset, pagination.challenges.limit, true)}
+                      disabled={loading.loadMoreChallenges}
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading.loadMoreChallenges ? 'Loading...' : 'Load More Challenges'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
